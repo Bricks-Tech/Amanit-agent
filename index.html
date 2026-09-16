@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Amanit · Voice Concierge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,500&family=Great+Vibes&family=Outfit:wght@300;400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="bg-wash"></div>
+    <div class="grain"></div>
+
+    <header class="topbar">
+      <p class="hours">Breakfast 8:00–12:30 · Lunch &amp; dinner from 13:00</p>
+      <p class="location">Amanit</p>
+    </header>
+
+    <main class="stage">
+      <section class="hero">
+        <p class="eyebrow">Table-side, over the phone</p>
+        <h1 class="script">Amanit</h1>
+        <h2 class="headline">Voice concierge</h2>
+        <div class="rule">
+          <span></span>
+          <i></i>
+          <span></span>
+        </div>
+        <p class="lede">
+          Ask about breakfast, lunch, or dinner — prices, dietary notes, and
+          what to order. Tap the widget and speak.
+        </p>
+        <ul class="pills">
+          <li>Vegetarian · Vegan · Gluten free</li>
+          <li>10% VAT included</li>
+          <li>Allergies? Tell us first</li>
+        </ul>
+      </section>
+
+      <section class="widget-card" aria-label="Call the Amanit voice agent">
+        <div class="card-glow"></div>
+        <p class="card-kicker">Live agent</p>
+        <h3>Talk to Amanit</h3>
+        <p class="card-copy">
+          The assistant uses our current menus. Breakfast until 12:30, then
+          lunch &amp; dinner from 1pm.
+        </p>
+        <div class="widget-slot">
+          <div class="prompt-panel">
+            <div class="mic-badge" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <rect x="9" y="3" width="6" height="11" rx="3" stroke="currentColor" stroke-width="1.6"/>
+                <path d="M6.5 11.5a5.5 5.5 0 0 0 11 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                <path d="M12 17v3.5M8.5 20.5h7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <p class="prompt-title">Try asking</p>
+            <ul class="prompts">
+              <li>“What’s good for breakfast?”</li>
+              <li>“Do you have vegan or gluten-free?”</li>
+              <li>“How much is the Wagyu Smash Burger?”</li>
+            </ul>
+          </div>
+        </div>
+        <p class="mic-hint">Use the round button in the corner to start speaking.</p>
+        <elevenlabs-convai agent-id="agent_3801m2k2eqyxems8x8h9p42bp354"></elevenlabs-convai>
+      </section>
+    </main>
+
+    <footer>
+      <p>Please inform us of any allergies · Fishery products follow Anisakis prevention standards</p>
+    </footer>
+
+    <script
+      src="https://unpkg.com/@elevenlabs/convai-widget-embed"
+      async
+      type="text/javascript"
+    ></script>
+  </body>
+</html>
