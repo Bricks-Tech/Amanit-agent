@@ -20,7 +20,8 @@ body {
   min-height: 100%;
 }
 
-body {
+.landing-root {
+  min-height: 100vh;
   font-family: Outfit, system-ui, sans-serif;
   color: var(--ink);
   background: var(--cream);
@@ -57,9 +58,22 @@ body {
   color: var(--muted);
 }
 
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
 .location {
   font-weight: 600;
   color: var(--mint-ink);
+}
+
+.staff-link {
+  color: var(--mint-ink);
+  text-decoration: none;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(110, 184, 168, 0.55);
 }
 
 .stage {

@@ -1,0 +1,17 @@
+# Optional local Postgres only.
+# Production database is AWS RDS — set DATABASE_URL to your RDS URL.
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: amanit
+      POSTGRES_PASSWORD: amanit
+      POSTGRES_DB: amanit
+    ports:
+      - "5450:5432"
+    volumes:
+      - amanit_pg:/var/lib/postgresql/data
+
+volumes:
+  amanit_pg:

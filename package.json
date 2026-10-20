@@ -1,0 +1,15 @@
+{
+  "name": "amanit-voice-agent",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces --if-present",
+    "dev:web": "npm run dev -w @amanit/web",
+    "dev:api": "npm run dev -w @amanit/api",
+    "build": "npm run build -w @amanit/api && npm run build -w @amanit/web",
+    "db:migrate": "npm run db:migrate -w @amanit/api",
+    "db:seed": "npm run db:seed -w @amanit/api"
+  }
+}

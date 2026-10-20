@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+apps/web/dist/
+apps/api/dist/
+coverage/
+
+# Env & secrets (never commit)
+.env
+.env.*
+!.env.example
+!**/.env.example
+apps/api/.env
+apps/web/.env
+infra/aws-resources.env
+
+# Tool configs that embed live secrets (use .md docs + fill secrets in ElevenLabs UI)
+infra/elevenlabs-place-order-tool.json
+
+# Local / OS / IDE
+*.log
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+.cursor/
+
+# Prisma local DBs
+apps/api/prisma/*.db
+apps/api/prisma/*.db-journal
+
+# Deploy / cloud local state
+.vercel
+.aws/
+*.pem
+*.key
+
+# Docker / temp
+.tmp/
+tmp/
+*.tar
