@@ -12,7 +12,13 @@ conversationsRouter.get("/", async (_req, res) => {
     orderBy: { createdAt: "desc" },
     include: {
       orders: {
-        select: { id: true, status: true, totalCents: true },
+        select: {
+          id: true,
+          status: true,
+          totalCents: true,
+          externalId: true,
+          items: true,
+        },
       },
     },
   });

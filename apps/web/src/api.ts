@@ -14,8 +14,16 @@ export type Conversation = {
   durationSeconds?: number | null;
   startedAt?: string | null;
   endedAt?: string | null;
+  metadata?: unknown;
   createdAt: string;
-  orders?: Array<{ id: string; status: string; totalCents: number; externalId?: string | null }>;
+  orders?: Array<{
+    id: string;
+    status: string;
+    totalCents: number;
+    externalId?: string | null;
+    items?: OrderItem[] | unknown;
+    notes?: string | null;
+  }>;
 };
 
 export type OrderItem = {
@@ -80,6 +88,10 @@ export function loginRequest(email: string, password: string) {
 
 export function fetchConversations(token: string) {
   return request<{ conversations: Conversation[] }>("/conversations", {}, token);
+}
+
+export function fetchConversation(token: string, id: string) {
+  return request<{ conversation: Conversation }>(`/conversations/${id}`, {}, token);
 }
 
 export function fetchOrders(token: string) {
