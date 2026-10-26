@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { OrderStatus, type Prisma } from "@prisma/client";
+import { asBytes } from "../lib/bytes.js";
 import { prisma } from "../lib/prisma.js";
 
 export const webhooksRouter = Router();
@@ -102,7 +103,67 @@ function phoneFromMetadata(meta: Record<string, unknown>): string | undefined {
 }
 
 /**
- * POST webhook body handler — only post_call_transcription is ingested.
+ * ElevenLabs `post_call_audio`: base64 MP3 in data.full_audio.
+ * Stored separately so list/detail queries do not load the file.
+ */
+async function ingestElevenLabsAudio(
+  body: { data?: Record<string, unknown> },
+  res: import("express").Response
+) {
+  const data = (body.data ?? {}) as Record<string, unknown>;
+  const agentId = asString(data.agent_id);
+  const conversationId = asString(data.conversation_id);
+  const fullAudio = asString(data.full_audio);
+
+  if (!conversationId || !fullAudio) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  let audio: Buffer;
+  try {
+    audio = Buffer.from(fullAudio, "base64");
+  } catch {
+    return res.status(400).json({ error: "Invalid audio" });
+  }
+  if (!audio.length) {
+    return res.status(400).json({ error: "Invalid audio" });
+  }
+
+  const conversation = await prisma.conversation.upsert({
+    where: { externalId: conversationId },
+    create: {
+      externalId: conversationId,
+      agentId,
+      status: "completed",
+    },
+    update: {
+      agentId: agentId ?? undefined,
+    },
+  });
+
+  await prisma.conversationAudio.upsert({
+    where: { conversationId: conversation.id },
+    create: {
+      conversationId: conversation.id,
+      contentType: "audio/mpeg",
+      data: asBytes(audio),
+    },
+    update: {
+      contentType: "audio/mpeg",
+      data: asBytes(audio),
+    },
+  });
+
+  console.log(`Stored conversation audio ${conversation.id} (${audio.length} bytes)`);
+
+  return res.status(200).json({
+    success: true,
+    chatId: conversation.id,
+  });
+}
+
+/**
+ * POST webhook body handler — post_call_transcription and post_call_audio.
  * Mapped into Conversation (our "chat") model.
  */
 async function ingestElevenLabsWebhook(
@@ -114,6 +175,10 @@ async function ingestElevenLabsWebhook(
     event_timestamp?: number;
     data?: Record<string, unknown>;
   };
+
+  if (body.type === "post_call_audio") {
+    return ingestElevenLabsAudio(body, res);
+  }
 
   if (body.type !== "post_call_transcription") {
     return res.status(200).json({

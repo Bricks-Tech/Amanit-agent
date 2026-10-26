@@ -1382,6 +1382,13 @@ body {
   height: 6px;
   border-radius: 3px;
   background: #e2e8f0;
+  cursor: pointer;
+}
+
+.conv-audio-error {
+  color: #ef4444;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
 }
 
 .conv-track-fill {

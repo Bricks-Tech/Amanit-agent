@@ -147,19 +147,6 @@ export function turnClock(seconds: number | null) {
   return formatDuration(Math.round(seconds));
 }
 
-export function recordingUrl(metadata: unknown): string | null {
-  if (!metadata || typeof metadata !== "object") return null;
-  const record = metadata as Record<string, unknown>;
-  for (const key of ["recordingUrl", "recording_url", "audioUrl", "audio_url"]) {
-    const value = record[key];
-    if (typeof value === "string" && /^https?:\/\//.test(value)) return value;
-  }
-  if (record.rawMetadata && typeof record.rawMetadata === "object") {
-    return recordingUrl(record.rawMetadata);
-  }
-  return null;
-}
-
 export function orderStatusLabel(status: string) {
   if (status === "CANCELLED") return "Cancelled";
   return "Sent to Lightspeed";

@@ -27,8 +27,9 @@ The post-call webhook is public. No shared secret, signature header, or HMAC che
 
 ## Body
 
-Only `type: "post_call_transcription"` is ingested. Other types →  
-`{ "success": true, "message": "Event type ignored" }`.
+- `type: "post_call_transcription"` is saved as the conversation.
+- `type: "post_call_audio"` is saved as the MP3 recording (`data.full_audio`). Turn on **Send audio data** in the ElevenLabs webhook settings, or the player has nothing to play.
+- Other types → `{ "success": true, "message": "Event type ignored" }`.
 
 Required in `data`:
 

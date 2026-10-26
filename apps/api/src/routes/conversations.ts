@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
+import { asBytes } from "../lib/bytes.js";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../middleware/auth.js";
 
@@ -23,6 +24,49 @@ conversationsRouter.get("/", async (_req, res) => {
     },
   });
   return res.json({ conversations });
+});
+
+conversationsRouter.get("/:id/audio", async (req, res) => {
+  const conversation = await prisma.conversation.findUnique({
+    where: { id: req.params.id },
+    include: { audio: true },
+  });
+  if (!conversation) {
+    return res.status(404).json({ error: "Conversation not found" });
+  }
+
+  if (conversation.audio?.data) {
+    res.setHeader("Content-Type", conversation.audio.contentType || "audio/mpeg");
+    res.setHeader("Cache-Control", "private, max-age=3600");
+    return res.send(Buffer.from(conversation.audio.data));
+  }
+
+  const apiKey = process.env.ELEVENLABS_API_KEY;
+  if (!apiKey || !conversation.externalId) {
+    return res.status(404).json({ error: "Recording not available" });
+  }
+
+  const upstream = await fetch(
+    `https://api.elevenlabs.io/v1/convai/conversations/${encodeURIComponent(conversation.externalId)}/audio`,
+    { headers: { "xi-api-key": apiKey } }
+  );
+  if (!upstream.ok) {
+    return res.status(404).json({ error: "Recording not available" });
+  }
+
+  const audio = Buffer.from(await upstream.arrayBuffer());
+  const contentType = upstream.headers.get("content-type") || "audio/mpeg";
+  if (audio.length) {
+    await prisma.conversationAudio.upsert({
+      where: { conversationId: conversation.id },
+      create: { conversationId: conversation.id, contentType, data: asBytes(audio) },
+      update: { contentType, data: asBytes(audio) },
+    });
+  }
+
+  res.setHeader("Content-Type", contentType);
+  res.setHeader("Cache-Control", "private, max-age=3600");
+  return res.send(audio);
 });
 
 conversationsRouter.get("/:id", async (req, res) => {

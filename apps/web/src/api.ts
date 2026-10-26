@@ -94,6 +94,16 @@ export function fetchConversation(token: string, id: string) {
   return request<{ conversation: Conversation }>(`/conversations/${id}`, {}, token);
 }
 
+export async function fetchConversationAudio(token: string, id: string): Promise<Blob> {
+  const response = await fetch(`${API_URL}/conversations/${id}/audio`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) {
+    throw new Error("Recording not available");
+  }
+  return response.blob();
+}
+
 export function fetchOrders(token: string) {
   return request<{ orders: Order[] }>("/orders", {}, token);
 }

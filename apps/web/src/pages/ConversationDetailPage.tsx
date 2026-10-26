@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { Link, useParams } from "react-router-dom";
-import { fetchConversation, type Conversation } from "../api";
+import { fetchConversation, fetchConversationAudio, type Conversation } from "../api";
 import { useAuth } from "../auth";
 import {
   conversationCode,
@@ -14,7 +14,6 @@ import {
   languageMic,
   orderItems,
   orderStatusLabel,
-  recordingUrl,
   transcriptTurns,
   turnClock,
 } from "../lib/conversationView";
@@ -26,7 +25,10 @@ export function ConversationDetailPage() {
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
+  const [mediaDuration, setMediaDuration] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [audioSrc, setAudioSrc] = useState<string | null>(null);
+  const [audioError, setAudioError] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -34,6 +36,29 @@ export function ConversationDetailPage() {
     fetchConversation(token, id)
       .then((res) => setConversation(res.conversation))
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load"));
+  }, [token, id]);
+
+  useEffect(() => {
+    if (!token || !id) return;
+    let objectUrl = "";
+    let cancelled = false;
+    setAudioSrc(null);
+    setAudioError(null);
+    setPlaying(false);
+    setElapsed(0);
+    fetchConversationAudio(token, id)
+      .then((blob) => {
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(blob);
+        setAudioSrc(objectUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setAudioError("No recording was saved for this call.");
+      });
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
   }, [token, id]);
 
   if (error) {
@@ -57,20 +82,30 @@ export function ConversationDetailPage() {
   const turns = transcriptTurns(conversation);
   const order = conversation.orders?.[0] ?? null;
   const items = order ? orderItems(order.items) : [];
-  const audioSrc = recordingUrl(conversation.metadata);
-  const duration = conversation.durationSeconds ?? 0;
+  const duration = mediaDuration || conversation.durationSeconds || 0;
   const progress = duration > 0 ? Math.min(1, elapsed / duration) : 0;
 
   function togglePlayback() {
     const audio = audioRef.current;
     if (!audio) return;
     if (audio.paused) {
-      void audio.play();
-      setPlaying(true);
+      void audio.play().then(() => setPlaying(true)).catch(() => {
+        setPlaying(false);
+        setAudioError("Couldn’t play this recording.");
+      });
     } else {
       audio.pause();
       setPlaying(false);
     }
+  }
+
+  function seek(event: MouseEvent<HTMLDivElement>) {
+    const audio = audioRef.current;
+    if (!audio || !duration) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+    audio.currentTime = ratio * duration;
+    setElapsed(audio.currentTime);
   }
 
   return (
@@ -113,21 +148,34 @@ export function ConversationDetailPage() {
                 <span className="sr-only">{playing ? "Pause" : "Play"}</span>
               </button>
               <span className="conv-elapsed">{formatDuration(Math.floor(elapsed))}</span>
-              <div className="conv-track" aria-hidden="true">
+              <div
+                className="conv-track"
+                role="slider"
+                aria-valuemin={0}
+                aria-valuemax={Math.round(duration)}
+                aria-valuenow={Math.round(elapsed)}
+                aria-label="Recording position"
+                onClick={seek}
+              >
                 <span className="conv-track-fill" style={{ width: `${progress * 100}%` }} />
                 <span className="conv-track-knob" style={{ left: `${progress * 100}%` }} />
               </div>
-              <span className="conv-total">{formatDuration(conversation.durationSeconds)}</span>
+              <span className="conv-total">{formatDuration(duration || conversation.durationSeconds)}</span>
               {audioSrc ? (
                 <audio
                   ref={audioRef}
                   src={audioSrc}
                   preload="metadata"
+                  onLoadedMetadata={(event) => {
+                    const next = event.currentTarget.duration;
+                    if (Number.isFinite(next)) setMediaDuration(next);
+                  }}
                   onTimeUpdate={(event) => setElapsed(event.currentTarget.currentTime)}
                   onEnded={() => setPlaying(false)}
                 />
               ) : null}
             </div>
+            {audioError ? <p className="conv-audio-error">{audioError}</p> : null}
           </section>
 
           <section className="conv-panel conv-transcript">

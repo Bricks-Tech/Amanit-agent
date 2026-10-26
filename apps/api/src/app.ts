@@ -12,7 +12,8 @@ export function createApp() {
   const origin = process.env.CORS_ORIGIN?.split(",").map((value) => value.trim()) ?? true;
 
   app.use(cors({ origin, credentials: true }));
-  app.use(express.json({ limit: "2mb" }));
+  // Audio webhooks carry a base64 MP3 of the whole call.
+  app.use(express.json({ limit: "32mb" }));
 
   app.get("/health", (_req, res) => {
     res.json({ ok: true, service: "amanit-api" });
