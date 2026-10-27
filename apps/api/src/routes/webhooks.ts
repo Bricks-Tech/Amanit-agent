@@ -74,6 +74,20 @@ async function linkOrdersFromTranscript(conversationDbId: string, transcript: un
     console.log(`Linked ${result.count} order(s) to conversation ${conversationDbId}`);
   }
 
+  const conversation = await prisma.conversation.findUnique({
+    where: { id: conversationDbId },
+    select: { language: true },
+  });
+  if (conversation?.language) {
+    await prisma.order.updateMany({
+      where: {
+        conversationId: conversationDbId,
+        OR: [{ language: null }, { language: "" }],
+      },
+      data: { language: conversation.language },
+    });
+  }
+
   if (tableLabel) return;
   const linked = await prisma.order.findFirst({
     where: { conversationId: conversationDbId, tableLabel: { not: null } },

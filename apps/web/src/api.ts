@@ -51,6 +51,7 @@ export type Order = {
     summary?: string | null;
     callerName?: string | null;
     tableLabel?: string | null;
+    language?: string | null;
   } | null;
 };
 

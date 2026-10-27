@@ -173,6 +173,7 @@ toolsRouter.post("/create-order", async (req, res) => {
   const totalCents = items.reduce((sum, item) => sum + item.quantity * item.priceCents, 0);
 
   let conversationId: string | undefined;
+  let language = data.language;
   if (conversationExternalId) {
     const existing = await prisma.conversation.findFirst({
       where: {
@@ -181,12 +182,13 @@ toolsRouter.post("/create-order", async (req, res) => {
     });
     if (existing) {
       conversationId = existing.id;
+      language = data.language ?? existing.language ?? undefined;
     } else {
       const created = await prisma.conversation.create({
         data: {
           externalId: conversationExternalId,
           tableLabel,
-          language: data.language,
+          language,
           callerName: customerName,
           status: "in_progress",
           summary: `Order in progress: ${items.map((i) => `${i.quantity}x ${i.name}`).join(", ")}`,
@@ -205,7 +207,7 @@ toolsRouter.post("/create-order", async (req, res) => {
       customerName,
       customerPhone,
       tableLabel,
-      language: data.language,
+      language,
       notes: instructions,
       items: items as unknown as Prisma.InputJsonValue,
       totalCents,

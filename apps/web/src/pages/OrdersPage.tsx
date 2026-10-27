@@ -33,6 +33,10 @@ function displayLanguage(language?: string | null) {
   return language;
 }
 
+function orderLanguage(order: Order) {
+  return order.language || order.conversation?.language;
+}
+
 function conversationLabel(order: Order) {
   const id = order.conversation?.externalId;
   if (!id) return "—";
@@ -68,7 +72,7 @@ function downloadOrdersCsv(rows: Order[]) {
       order.externalId ?? order.id,
       formatTableLabel(order.tableLabel, order.customerName),
       order.conversation?.externalId ?? "",
-      displayLanguage(order.language),
+      displayLanguage(orderLanguage(order)),
       (order.totalCents / 100).toFixed(2),
       String(count),
       formatTime(order.createdAt),
@@ -128,7 +132,7 @@ export function OrdersPage() {
         .toLowerCase();
       const matchesQuery = !query || haystack.includes(query.toLowerCase());
 
-      const lang = (order.language ?? "").toLowerCase();
+      const lang = (orderLanguage(order) ?? "").toLowerCase();
       const matchesLanguage =
         language === "all" ||
         (language === "spanish" && (lang.includes("span") || lang === "es")) ||
@@ -270,7 +274,8 @@ export function OrdersPage() {
               <tbody>
                 {filtered.map((order) => {
                   const count = itemCount(order.items);
-                  const langLabel = displayLanguage(order.language);
+                  const language = orderLanguage(order);
+                  const langLabel = displayLanguage(language);
                   return (
                     <tr key={order.id}>
                       <td>
@@ -292,7 +297,7 @@ export function OrdersPage() {
                         ) : (
                           <span className="orders-lang">
                             <img
-                              src={languageIcon(order.language)}
+                              src={languageIcon(language)}
                               alt=""
                               width={16}
                               height={16}

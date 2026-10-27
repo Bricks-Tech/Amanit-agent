@@ -60,6 +60,7 @@ ordersRouter.get("/", async (req, res) => {
           summary: true,
           callerName: true,
           tableLabel: true,
+          language: true,
         },
       },
     },
