@@ -18,6 +18,25 @@ import {
   turnClock,
 } from "../lib/conversationView";
 import { formatDuration } from "../lib/format";
+import { waveformPeaks } from "../lib/waveform";
+
+const PLACEHOLDER_PEAKS = [0.35, 0.55, 0.4, 0.7, 0.5, 0.85, 0.45, 0.6, 0.38, 0.72, 0.5, 0.66];
+
+function PlayIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+      <path d="M4.2 2.4v9.2L11.2 7 4.2 2.4z" fill="white" />
+    </svg>
+  );
+}
+
+function PauseIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+      <path d="M3.5 2.3h2.3v9.4H3.5V2.3zm4.7 0h2.3v9.4H8.2V2.3z" fill="white" />
+    </svg>
+  );
+}
 
 export function ConversationDetailPage() {
   const { id } = useParams();
@@ -29,6 +48,7 @@ export function ConversationDetailPage() {
   const [playing, setPlaying] = useState(false);
   const [audioSrc, setAudioSrc] = useState<string | null>(null);
   const [audioError, setAudioError] = useState<string | null>(null);
+  const [peaks, setPeaks] = useState<number[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -44,13 +64,16 @@ export function ConversationDetailPage() {
     let cancelled = false;
     setAudioSrc(null);
     setAudioError(null);
+    setPeaks([]);
     setPlaying(false);
     setElapsed(0);
     fetchConversationAudio(token, id)
-      .then((blob) => {
+      .then(async (blob) => {
         if (cancelled) return;
         objectUrl = URL.createObjectURL(blob);
         setAudioSrc(objectUrl);
+        const nextPeaks = await waveformPeaks(blob);
+        if (!cancelled && nextPeaks.length) setPeaks(nextPeaks);
       })
       .catch(() => {
         if (!cancelled) setAudioError("No recording was saved for this call.");
@@ -88,15 +111,15 @@ export function ConversationDetailPage() {
   function togglePlayback() {
     const audio = audioRef.current;
     if (!audio) return;
-    if (audio.paused) {
-      void audio.play().then(() => setPlaying(true)).catch(() => {
-        setPlaying(false);
-        setAudioError("Couldn’t play this recording.");
-      });
-    } else {
+    if (!audio.paused && !audio.ended) {
       audio.pause();
-      setPlaying(false);
+      return;
     }
+    if (audio.ended) audio.currentTime = 0;
+    void audio.play().catch(() => {
+      setPlaying(false);
+      setAudioError("Couldn’t play this recording.");
+    });
   }
 
   function seek(event: MouseEvent<HTMLDivElement>) {
@@ -142,14 +165,20 @@ export function ConversationDetailPage() {
         <div className="conv-detail-main">
           <section className="conv-panel conv-recording">
             <h2>Recording</h2>
-            <div className="conv-player">
-              <button type="button" className="conv-play" onClick={togglePlayback} disabled={!audioSrc}>
-                <img src="/assets/conv-pause.svg" alt="" width={14} height={14} />
-                <span className="sr-only">{playing ? "Pause" : "Play"}</span>
+            <div className={playing ? "conv-player is-playing" : "conv-player"}>
+              <button
+                type="button"
+                className="conv-play"
+                onClick={togglePlayback}
+                disabled={!audioSrc}
+                aria-label={playing ? "Pause" : "Play"}
+                aria-pressed={playing}
+              >
+                {playing ? <PauseIcon /> : <PlayIcon />}
               </button>
-              <span className="conv-elapsed">{formatDuration(Math.floor(elapsed))}</span>
+              <span className="conv-elapsed">{formatDuration(elapsed)}</span>
               <div
-                className="conv-track"
+                className="conv-wave"
                 role="slider"
                 aria-valuemin={0}
                 aria-valuemax={Math.round(duration)}
@@ -157,20 +186,34 @@ export function ConversationDetailPage() {
                 aria-label="Recording position"
                 onClick={seek}
               >
-                <span className="conv-track-fill" style={{ width: `${progress * 100}%` }} />
-                <span className="conv-track-knob" style={{ left: `${progress * 100}%` }} />
+                {(peaks.length ? peaks : PLACEHOLDER_PEAKS).map((peak, index, all) => {
+                  const played = (index + 0.5) / all.length <= progress;
+                  const playhead = Math.floor(progress * all.length);
+                  const live = playing && Math.abs(index - playhead) <= 1;
+                  return (
+                    <span
+                      key={index}
+                      className={
+                        live ? "conv-wave-bar played live" : played ? "conv-wave-bar played" : "conv-wave-bar"
+                      }
+                      style={{ height: `${Math.round(6 + peak * 28)}px` }}
+                    />
+                  );
+                })}
               </div>
               <span className="conv-total">{formatDuration(duration || conversation.durationSeconds)}</span>
               {audioSrc ? (
                 <audio
                   ref={audioRef}
                   src={audioSrc}
-                  preload="metadata"
+                  preload="auto"
                   onLoadedMetadata={(event) => {
                     const next = event.currentTarget.duration;
                     if (Number.isFinite(next)) setMediaDuration(next);
                   }}
                   onTimeUpdate={(event) => setElapsed(event.currentTarget.currentTime)}
+                  onPlay={() => setPlaying(true)}
+                  onPause={() => setPlaying(false)}
                   onEnded={() => setPlaying(false)}
                 />
               ) : null}

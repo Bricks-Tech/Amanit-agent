@@ -63,7 +63,7 @@ jobs:
 
       - name: Install and build
         env:
-          VITE_API_URL: ${{ vars.VITE_API_URL }}
+          VITE_API_URL: ${{ vars.VITE_API_URL || 'https://bxppcdpxki.us-east-2.awsapprunner.com' }}
         run: |
           npm install
           npm run build -w @amanit/web

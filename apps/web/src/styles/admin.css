@@ -1385,6 +1385,43 @@ body {
   cursor: pointer;
 }
 
+.conv-wave {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  cursor: pointer;
+}
+
+.conv-wave-bar {
+  flex: 1 1 0;
+  min-width: 0;
+  border-radius: 1px;
+  background: #d7e4e2;
+  transform-origin: center;
+}
+
+.conv-wave-bar.played {
+  background: var(--admin-teal);
+}
+
+.conv-player.is-playing .conv-wave-bar.live {
+  animation: conv-wave 0.7s ease-in-out infinite;
+}
+
+@keyframes conv-wave {
+  50% {
+    transform: scaleY(0.55);
+  }
+}
+
+.conv-player audio {
+  display: none;
+}
+
 .conv-audio-error {
   color: #ef4444;
   font-size: 0.875rem;

@@ -31,9 +31,10 @@ export function formatDateShort(value?: string | null) {
 }
 
 export function formatDuration(seconds?: number | null) {
-  if (seconds == null) return "—";
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
+  if (seconds == null || !Number.isFinite(seconds)) return "—";
+  const total = Math.max(0, Math.round(seconds));
+  const m = Math.floor(total / 60);
+  const s = total % 60;
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 

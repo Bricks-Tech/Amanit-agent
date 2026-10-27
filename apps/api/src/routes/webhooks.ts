@@ -18,6 +18,75 @@ function asString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value : undefined;
 }
 
+/**
+ * Place-Order returns `order_id` inside the post-call transcript tool result.
+ * ElevenLabs does not put the conversation id on that tool request unless the
+ * tool body includes the system__conversation_id dynamic variable.
+ */
+function collectOrderRefs(value: unknown, externalIds: Set<string>, dbIds: Set<string>, depth = 0) {
+  if (depth > 24 || value == null) return;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    const looksLikeJson =
+      (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+      (trimmed.startsWith("[") && trimmed.endsWith("]"));
+    if (!looksLikeJson) return;
+    try {
+      collectOrderRefs(JSON.parse(trimmed), externalIds, dbIds, depth + 1);
+    } catch {
+      // Tool payloads sometimes contain truncated JSON.
+    }
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) collectOrderRefs(item, externalIds, dbIds, depth + 1);
+    return;
+  }
+  if (typeof value !== "object") return;
+
+  const record = value as Record<string, unknown>;
+  const externalId = asString(record.order_id) ?? asString(record.orderId);
+  const dbId = asString(record.order_db_id) ?? asString(record.orderDbId);
+  if (externalId && /^O-\d+$/.test(externalId)) externalIds.add(externalId);
+  if (dbId && /^c[a-z0-9]{20,}$/.test(dbId)) dbIds.add(dbId);
+  for (const nested of Object.values(record)) {
+    collectOrderRefs(nested, externalIds, dbIds, depth + 1);
+  }
+}
+
+async function linkOrdersFromTranscript(conversationDbId: string, transcript: unknown, tableLabel?: string) {
+  const externalIds = new Set<string>();
+  const dbIds = new Set<string>();
+  collectOrderRefs(transcript, externalIds, dbIds);
+  if (!externalIds.size && !dbIds.size) return;
+
+  const result = await prisma.order.updateMany({
+    where: {
+      conversationId: null,
+      OR: [
+        ...(externalIds.size ? [{ externalId: { in: [...externalIds] } }] : []),
+        ...(dbIds.size ? [{ id: { in: [...dbIds] } }] : []),
+      ],
+    },
+    data: { conversationId: conversationDbId },
+  });
+  if (result.count) {
+    console.log(`Linked ${result.count} order(s) to conversation ${conversationDbId}`);
+  }
+
+  if (tableLabel) return;
+  const linked = await prisma.order.findFirst({
+    where: { conversationId: conversationDbId, tableLabel: { not: null } },
+    orderBy: { createdAt: "desc" },
+    select: { tableLabel: true },
+  });
+  if (!linked?.tableLabel) return;
+  await prisma.conversation.update({
+    where: { id: conversationDbId },
+    data: { tableLabel: linked.tableLabel },
+  });
+}
+
 function asNumber(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }
@@ -304,6 +373,8 @@ async function ingestElevenLabsWebhook(
       metadata: metadata as Prisma.InputJsonValue,
     },
   });
+
+  await linkOrdersFromTranscript(conversation.id, data.transcript, conversation.tableLabel ?? undefined);
 
   // Optional order items from analysis/collection (Place-Order tool is primary path)
   const orderItems =

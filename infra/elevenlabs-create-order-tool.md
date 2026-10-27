@@ -18,7 +18,9 @@ x-webhook-secret: 310a0bb02c65be18d037f4caf1a91ce5
 | `instructions` | yes | Special requests / allergies (stored as order notes) |
 | `table` | no | Number only, e.g. `7` (UI shows `Table 7`) |
 
-**Do not** put `conversation_id` in the tool body. ElevenLabs sends it on the webhook envelope (`conversation_id` / `parameters`), and the API reads it from there.
+Add a body parameter `conversation_id` in the ElevenLabs tool. Set its value type to **Dynamic variable** and the variable name to `system__conversation_id`. The model must not ask the guest for it. See [Webhook tools](https://elevenlabs.io/docs/eleven-agents/customization/tools/webhook-tools) and [Dynamic variables](https://elevenlabs.io/docs/eleven-agents/customization/personalization/dynamic-variables).
+
+If that field is missing, the post-call transcript still contains the Place-Order `order_id`, and the conversation webhook attaches that order.
 
 ## What the API stores
 
