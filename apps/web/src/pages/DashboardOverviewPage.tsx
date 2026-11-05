@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { fetchConversations, fetchOrders, type Conversation, type Order } from "../api";
 import { useAuth } from "../auth";
 import { PeriodTabs, type Period } from "../components/PeriodTabs";
+import { displayLanguage, isEnglish } from "../lib/conversationView";
 import { formatMoney, relativeTime } from "../lib/format";
 
 function chartPath(values: number[]) {
@@ -76,12 +77,8 @@ export function DashboardOverviewPage() {
 
   const totalValue = filteredOrders.reduce((sum, order) => sum + order.totalCents, 0);
   const avgValue = filteredOrders.length ? totalValue / filteredOrders.length : 0;
-  const spanish = filteredConversations.filter(
-    (c) => (c.language ?? "").toLowerCase() === "spanish"
-  ).length;
-  const english = filteredConversations.filter(
-    (c) => (c.language ?? "").toLowerCase() === "english"
-  ).length;
+  const spanish = filteredConversations.filter((c) => displayLanguage(c.language) === "Spanish").length;
+  const english = filteredConversations.filter((c) => displayLanguage(c.language) === "English").length;
 
   const chartValues = useMemo(
     () => dailyConversationCounts(conversations, period),
@@ -210,14 +207,8 @@ export function DashboardOverviewPage() {
                     <div className="item-title">
                       <span>{conversation.tableLabel ?? conversation.callerName ?? "Guest"}</span>
                       {conversation.language ? (
-                        <span
-                          className={
-                            conversation.language.toLowerCase() === "english"
-                              ? "lang-pill english"
-                              : "lang-pill"
-                          }
-                        >
-                          {conversation.language}
+                        <span className={isEnglish(conversation.language) ? "lang-pill english" : "lang-pill"}>
+                          {displayLanguage(conversation.language)}
                         </span>
                       ) : null}
                     </div>

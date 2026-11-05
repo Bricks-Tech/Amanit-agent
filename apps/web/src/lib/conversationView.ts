@@ -1,15 +1,23 @@
 import type { Conversation, OrderItem } from "../api";
 import { formatDateShort, formatDuration, formatMoney, formatTableLabel, formatTime } from "./format";
 
+function languageKey(language?: string | null) {
+  return (language ?? "").trim().toLowerCase().replace(/_/g, "-");
+}
+
+export function isSpanish(language?: string | null) {
+  const key = languageKey(language);
+  return key === "es" || key.startsWith("es-") || key.includes("span");
+}
+
 export function isEnglish(language?: string | null) {
-  const key = (language ?? "").toLowerCase();
-  return key === "en" || key.includes("eng");
+  const key = languageKey(language);
+  return key === "en" || key.startsWith("en-") || key.includes("english");
 }
 
 export function displayLanguage(language?: string | null) {
-  if (!language) return "—";
-  const key = language.toLowerCase();
-  if (key === "es" || key.includes("span")) return "Spanish";
+  if (!language?.trim()) return "—";
+  if (isSpanish(language)) return "Spanish";
   if (isEnglish(language)) return "English";
   return language;
 }
@@ -145,11 +153,6 @@ function normalizeTurn(turn: unknown): TranscriptTurn[] {
 export function turnClock(seconds: number | null) {
   if (seconds == null) return "0:00";
   return formatDuration(Math.round(seconds));
-}
-
-export function orderStatusLabel(status: string) {
-  if (status === "CANCELLED") return "Cancelled";
-  return "Sent to Lightspeed";
 }
 
 export function formatOrderMoney(cents: number) {

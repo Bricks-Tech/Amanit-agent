@@ -48,7 +48,7 @@ Missing either → `400 { "error": "Missing required fields" }`.
 | `metadata.start_time_unix_secs` | `startedAt` |
 | `metadata.call_duration_secs` | `durationSeconds` / `endedAt` |
 | `metadata.phone_call.external_number` | `callerPhone` |
-| `metadata.main_language` | `language` |
+| `conversation_config_override.agent.language`, then `metadata.main_language` (`en` / `es`) | `language` (`English` / `Spanish`) |
 | `transcript[]` | `transcript` text + `metadata.transcriptTurns` (tools included) |
 | status | `resolved` |
 

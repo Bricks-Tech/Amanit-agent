@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { OrderStatus, type Prisma } from "@prisma/client";
 import { asBytes } from "../lib/bytes.js";
+import { extractConversationLanguage } from "../lib/conversationLanguage.js";
 import { prisma } from "../lib/prisma.js";
 
 export const webhooksRouter = Router();
@@ -305,11 +306,7 @@ async function ingestElevenLabsWebhook(
     asString(meta.table_label) ??
     asString(meta.table);
 
-  const language =
-    asString(meta.main_language) ??
-    collectionValue(collection, "language") ??
-    asString(dynamicVars.language) ??
-    asString(meta.language);
+  const language = extractConversationLanguage(data);
 
   const callerPhone =
     phoneFromMetadata(meta) ??
@@ -347,6 +344,7 @@ async function ingestElevenLabsWebhook(
     eventTimestamp: body.event_timestamp ?? null,
     notes: summaryFull ?? null,
     callSuccessful: asString(analysis.call_successful) ?? null,
+    mainLanguage: asString(meta.main_language) ?? null,
     terminationReason: asString(meta.termination_reason) ?? null,
     phoneCall: (meta.phone_call ?? null) as Prisma.InputJsonValue | null,
     dynamicVariables: (dynamicVars ?? null) as Prisma.InputJsonValue | null,

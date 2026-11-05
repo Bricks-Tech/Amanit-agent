@@ -1,12 +1,83 @@
 import { Router } from "express";
 import { z } from "zod";
+import type { Prisma } from "@prisma/client";
 import { asBytes } from "../lib/bytes.js";
+import {
+  canonicalLanguage,
+  fetchElevenLabsLanguage,
+  languageFromStoredMetadata,
+} from "../lib/conversationLanguage.js";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../middleware/auth.js";
 
 export const conversationsRouter = Router();
 
 conversationsRouter.use(requireAuth);
+
+type LanguageRow = {
+  id: string;
+  externalId: string | null;
+  language: string | null;
+  metadata: Prisma.JsonValue | null;
+};
+
+function metadataRecord(metadata: unknown): Record<string, unknown> {
+  return metadata && typeof metadata === "object" && !Array.isArray(metadata)
+    ? (metadata as Record<string, unknown>)
+    : {};
+}
+
+async function saveLanguage(id: string, language: string) {
+  await prisma.conversation.update({ where: { id }, data: { language } });
+  await prisma.order.updateMany({
+    where: { conversationId: id, OR: [{ language: null }, { language: "" }] },
+    data: { language },
+  });
+}
+
+async function resolveLanguage(row: LanguageRow) {
+  const resolved = canonicalLanguage(row.language ?? undefined) ?? languageFromStoredMetadata(row.metadata);
+  if (resolved) {
+    if (resolved !== row.language) await saveLanguage(row.id, resolved);
+    row.language = resolved;
+    return;
+  }
+
+  const metadata = metadataRecord(row.metadata);
+  if (metadata.languageLookup === "missing" || !row.externalId) return;
+
+  const fetched = await fetchElevenLabsLanguage(row.externalId);
+  if (fetched.language) {
+    await saveLanguage(row.id, fetched.language);
+    row.language = fetched.language;
+    return;
+  }
+  if (!fetched.checked) return;
+
+  await prisma.conversation.update({
+    where: { id: row.id },
+    data: {
+      metadata: { ...metadata, languageLookup: "missing" } as Prisma.InputJsonValue,
+    },
+  });
+}
+
+async function resolveLanguages(rows: LanguageRow[]) {
+  const pending = rows.filter((row) => canonicalLanguage(row.language ?? undefined) !== row.language || !row.language);
+  let index = 0;
+  async function worker() {
+    while (index < pending.length) {
+      const row = pending[index++];
+      try {
+        await resolveLanguage(row);
+      } catch (error) {
+        console.warn(`Could not resolve language for conversation ${row.id}`, error);
+      }
+    }
+  }
+  const workers = Math.min(5, pending.length);
+  await Promise.all(Array.from({ length: workers }, () => worker()));
+}
 
 conversationsRouter.get("/", async (_req, res) => {
   const conversations = await prisma.conversation.findMany({
@@ -23,6 +94,7 @@ conversationsRouter.get("/", async (_req, res) => {
       },
     },
   });
+  await resolveLanguages(conversations);
   return res.json({ conversations });
 });
 
@@ -77,6 +149,7 @@ conversationsRouter.get("/:id", async (req, res) => {
   if (!conversation) {
     return res.status(404).json({ error: "Conversation not found" });
   }
+  await resolveLanguage(conversation);
   return res.json({ conversation });
 });
 

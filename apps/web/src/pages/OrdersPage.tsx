@@ -19,17 +19,16 @@ function startOfDay(d: Date) {
 }
 
 function languageIcon(language?: string | null) {
-  const key = (language ?? "").toLowerCase();
-  if (key.includes("en")) return "/assets/icon-mic-en.svg";
-  if (key.includes("es") || key.includes("span")) return "/assets/icon-mic-es.svg";
+  const key = (language ?? "").trim().toLowerCase();
+  if (key === "en" || key.startsWith("en-") || key.includes("english")) return "/assets/icon-mic-en.svg";
   return "/assets/icon-mic-es.svg";
 }
 
 function displayLanguage(language?: string | null) {
-  if (!language) return "—";
-  const key = language.toLowerCase();
-  if (key === "es" || key.includes("span")) return "Spanish";
-  if (key === "en" || key.includes("eng")) return "English";
+  if (!language?.trim()) return "—";
+  const key = language.trim().toLowerCase();
+  if (key === "es" || key.startsWith("es-") || key.includes("span")) return "Spanish";
+  if (key === "en" || key.startsWith("en-") || key.includes("english")) return "English";
   return language;
 }
 
@@ -132,11 +131,11 @@ export function OrdersPage() {
         .toLowerCase();
       const matchesQuery = !query || haystack.includes(query.toLowerCase());
 
-      const lang = (orderLanguage(order) ?? "").toLowerCase();
+      const lang = (orderLanguage(order) ?? "").trim().toLowerCase();
       const matchesLanguage =
         language === "all" ||
-        (language === "spanish" && (lang.includes("span") || lang === "es")) ||
-        (language === "english" && (lang.includes("eng") || lang === "en"));
+        (language === "spanish" && (lang.includes("span") || lang === "es" || lang.startsWith("es-"))) ||
+        (language === "english" && (lang.includes("english") || lang === "en" || lang.startsWith("en-")));
 
       const created = new Date(order.createdAt).getTime();
       let matchesDate = true;

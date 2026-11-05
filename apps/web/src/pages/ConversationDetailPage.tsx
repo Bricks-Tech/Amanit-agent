@@ -13,7 +13,6 @@ import {
   isEnglish,
   languageMic,
   orderItems,
-  orderStatusLabel,
   transcriptTurns,
   turnClock,
 } from "../lib/conversationView";
@@ -278,10 +277,12 @@ export function ConversationDetailPage() {
             <section className="conv-panel conv-order-card">
               <div className="conv-order-head">
                 <h2>Order #{order.externalId ?? order.id.slice(0, 6)}</h2>
-                <span className={order.status === "CANCELLED" ? "conv-status cancelled" : "conv-status"}>
-                  <i />
-                  {orderStatusLabel(order.status)}
-                </span>
+                {order.status === "CANCELLED" ? (
+                  <span className="conv-status cancelled">
+                    <i />
+                    Cancelled
+                  </span>
+                ) : null}
               </div>
               <ul>
                 {items.map((item) => (
