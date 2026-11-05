@@ -5,6 +5,7 @@ import { asBytes } from "../lib/bytes.js";
 import {
   canonicalLanguage,
   fetchElevenLabsLanguage,
+  languageFromConversation,
   languageFromStoredMetadata,
 } from "../lib/conversationLanguage.js";
 import { prisma } from "../lib/prisma.js";
@@ -18,6 +19,7 @@ type LanguageRow = {
   id: string;
   externalId: string | null;
   language: string | null;
+  transcript: string | null;
   metadata: Prisma.JsonValue | null;
 };
 
@@ -30,13 +32,15 @@ function metadataRecord(metadata: unknown): Record<string, unknown> {
 async function saveLanguage(id: string, language: string) {
   await prisma.conversation.update({ where: { id }, data: { language } });
   await prisma.order.updateMany({
-    where: { conversationId: id, OR: [{ language: null }, { language: "" }] },
+    where: { conversationId: id },
     data: { language },
   });
 }
 
 async function resolveLanguage(row: LanguageRow) {
-  const resolved = canonicalLanguage(row.language ?? undefined) ?? languageFromStoredMetadata(row.metadata);
+  const spoken = languageFromConversation(row.transcript, row.metadata);
+  const resolved =
+    spoken ?? canonicalLanguage(row.language ?? undefined) ?? languageFromStoredMetadata(row.metadata);
   if (resolved) {
     if (resolved !== row.language) await saveLanguage(row.id, resolved);
     row.language = resolved;
@@ -63,11 +67,10 @@ async function resolveLanguage(row: LanguageRow) {
 }
 
 async function resolveLanguages(rows: LanguageRow[]) {
-  const pending = rows.filter((row) => canonicalLanguage(row.language ?? undefined) !== row.language || !row.language);
   let index = 0;
   async function worker() {
-    while (index < pending.length) {
-      const row = pending[index++];
+    while (index < rows.length) {
+      const row = rows[index++];
       try {
         await resolveLanguage(row);
       } catch (error) {
@@ -75,7 +78,7 @@ async function resolveLanguages(rows: LanguageRow[]) {
       }
     }
   }
-  const workers = Math.min(5, pending.length);
+  const workers = Math.min(5, rows.length);
   await Promise.all(Array.from({ length: workers }, () => worker()));
 }
 
