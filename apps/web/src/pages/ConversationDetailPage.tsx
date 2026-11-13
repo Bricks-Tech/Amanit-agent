@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type MouseEvent } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { fetchConversation, fetchConversationAudio, type Conversation } from "../api";
 import { useAuth } from "../auth";
 import {
@@ -39,7 +39,11 @@ function PauseIcon() {
 
 export function ConversationDetailPage() {
   const { id } = useParams();
+  const location = useLocation();
   const { token } = useAuth();
+  const fromOrders = location.pathname.startsWith("/dashboard/orders/");
+  const backTo = fromOrders ? "/dashboard/orders" : "/dashboard/conversations";
+  const backLabel = fromOrders ? "Orders" : "Conversations";
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
@@ -134,9 +138,9 @@ export function ConversationDetailPage() {
     <>
       <header className="conv-detail-header">
         <div>
-          <Link className="conv-back" to="/dashboard/conversations">
+          <Link className="conv-back" to={backTo}>
             <img src="/assets/conv-back.svg" alt="" width={16} height={16} />
-            Conversations
+            {backLabel}
           </Link>
           <div className="conv-detail-title">
             <h1>{conversationTitle(conversation)}</h1>
@@ -152,9 +156,9 @@ export function ConversationDetailPage() {
             {formatDuration(conversation.durationSeconds)}
           </p>
         </div>
-        {order ? (
+        {order && !fromOrders ? (
           <Link className="conv-view-order" to="/dashboard/orders">
-            View order #{order.externalId ?? order.id.slice(0, 6)}
+            View Order
             <img src="/assets/conv-arrow.svg" alt="" width={16} height={16} />
           </Link>
         ) : null}
@@ -277,10 +281,20 @@ export function ConversationDetailPage() {
             <section className="conv-panel conv-order-card">
               <div className="conv-order-head">
                 <h2>Order #{order.externalId ?? order.id.slice(0, 6)}</h2>
-                {order.status === "CANCELLED" ? (
+                {order.status === "REJECTED" ? (
                   <span className="conv-status cancelled">
                     <i />
-                    Cancelled
+                    Rejected
+                  </span>
+                ) : order.status === "CONFIRMED" ? (
+                  <span className="conv-status">
+                    <i />
+                    Confirmed
+                  </span>
+                ) : order.status === "PENDING" ? (
+                  <span className="conv-status pending">
+                    <i />
+                    Pending
                   </span>
                 ) : null}
               </div>
@@ -298,10 +312,12 @@ export function ConversationDetailPage() {
                 <span>Total</span>
                 <strong>{formatOrderMoney(order.totalCents)}</strong>
               </div>
-              <Link className="conv-order-link" to="/dashboard/orders">
-                View order
-                <img src="/assets/conv-arrow-teal.svg" alt="" width={16} height={16} />
-              </Link>
+              {!fromOrders ? (
+                <Link className="conv-order-link" to="/dashboard/orders">
+                  View Order
+                  <img src="/assets/conv-arrow-teal.svg" alt="" width={16} height={16} />
+                </Link>
+              ) : null}
             </section>
           ) : null}
         </aside>

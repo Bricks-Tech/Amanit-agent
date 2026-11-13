@@ -14,30 +14,52 @@ const itemSchema = z.object({
   priceCents: z.number().int().nonnegative().default(0),
 });
 
-const createSchema = z.object({
-  conversationId: z.string().optional(),
-  externalId: z.string().optional(),
-  customerName: z.string().optional(),
-  customerPhone: z.string().optional(),
-  tableLabel: z.string().optional(),
-  language: z.string().optional(),
-  items: z.array(itemSchema).min(1),
-  notes: z.string().optional(),
-  totalCents: z.number().int().nonnegative().optional(),
-  status: z.nativeEnum(OrderStatus).optional(),
-});
+const createSchema = z
+  .object({
+    conversationId: z.string().optional(),
+    externalId: z.string().optional(),
+    customerName: z.string().optional(),
+    customerPhone: z.string().optional(),
+    tableLabel: z.string().optional(),
+    language: z.string().optional(),
+    items: z.array(itemSchema).min(1),
+    notes: z.string().optional(),
+    totalCents: z.number().int().nonnegative().optional(),
+    status: z.nativeEnum(OrderStatus).optional(),
+    reason: z.string().nullable().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.status === OrderStatus.REJECTED && !data.reason?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Reason is required when status is Rejected",
+        path: ["reason"],
+      });
+    }
+  });
 
-const updateSchema = z.object({
-  customerName: z.string().optional(),
-  customerPhone: z.string().optional(),
-  tableLabel: z.string().optional(),
-  language: z.string().optional(),
-  items: z.array(itemSchema).min(1).optional(),
-  notes: z.string().nullable().optional(),
-  totalCents: z.number().int().nonnegative().optional(),
-  status: z.nativeEnum(OrderStatus).optional(),
-  conversationId: z.string().nullable().optional(),
-});
+const updateSchema = z
+  .object({
+    customerName: z.string().optional(),
+    customerPhone: z.string().optional(),
+    tableLabel: z.string().optional(),
+    language: z.string().optional(),
+    items: z.array(itemSchema).min(1).optional(),
+    notes: z.string().nullable().optional(),
+    totalCents: z.number().int().nonnegative().optional(),
+    status: z.nativeEnum(OrderStatus).optional(),
+    reason: z.string().nullable().optional(),
+    conversationId: z.string().nullable().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.status === OrderStatus.REJECTED && data.reason !== undefined && !data.reason?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Reason is required when status is Rejected",
+        path: ["reason"],
+      });
+    }
+  });
 
 function computeTotal(
   items: Array<{ quantity: number; priceCents: number }>,
@@ -86,6 +108,7 @@ ordersRouter.post("/", async (req, res) => {
   }
 
   const data = parsed.data;
+  const status = data.status ?? OrderStatus.PENDING;
   const order = await prisma.order.create({
     data: {
       conversationId: data.conversationId,
@@ -97,7 +120,8 @@ ordersRouter.post("/", async (req, res) => {
       items: data.items,
       notes: data.notes,
       totalCents: computeTotal(data.items, data.totalCents),
-      status: data.status ?? OrderStatus.PENDING,
+      status,
+      reason: status === OrderStatus.REJECTED ? data.reason!.trim() : null,
     },
   });
 
@@ -117,6 +141,19 @@ ordersRouter.patch("/:id", async (req, res) => {
 
   const data = parsed.data;
   const items = data.items ?? (existing.items as Array<{ quantity: number; priceCents: number }>);
+  const nextStatus = data.status ?? existing.status;
+
+  let reason: string | null | undefined;
+  if (nextStatus === OrderStatus.REJECTED) {
+    reason = data.reason?.trim() ?? existing.reason;
+    if (!reason) {
+      return res.status(400).json({ error: "Reason is required when status is Rejected" });
+    }
+  } else if (data.status !== undefined && data.status !== OrderStatus.REJECTED) {
+    reason = null;
+  } else if (data.reason !== undefined) {
+    reason = data.reason;
+  }
 
   const order = await prisma.order.update({
     where: { id: req.params.id },
@@ -132,6 +169,7 @@ ordersRouter.patch("/:id", async (req, res) => {
           ? computeTotal(items, data.totalCents)
           : undefined,
       status: data.status,
+      reason,
       conversationId: data.conversationId === undefined ? undefined : data.conversationId,
     },
   });

@@ -32,6 +32,8 @@ export type OrderItem = {
   priceCents: number;
 };
 
+export type OrderStatus = "PENDING" | "CONFIRMED" | "REJECTED";
+
 export type Order = {
   id: string;
   externalId?: string | null;
@@ -43,7 +45,8 @@ export type Order = {
   items: OrderItem[];
   notes?: string | null;
   totalCents: number;
-  status: string;
+  status: OrderStatus | string;
+  reason?: string | null;
   createdAt: string;
   conversation?: {
     id: string;
@@ -109,12 +112,20 @@ export function fetchOrders(token: string) {
   return request<{ orders: Order[] }>("/orders", {}, token);
 }
 
-export function updateOrderStatus(token: string, id: string, status: string) {
+export function updateOrderStatus(
+  token: string,
+  id: string,
+  status: OrderStatus,
+  reason?: string | null
+) {
   return request<{ order: Order }>(
     `/orders/${id}`,
     {
       method: "PATCH",
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({
+        status,
+        ...(status === "REJECTED" ? { reason } : { reason: null }),
+      }),
     },
     token
   );

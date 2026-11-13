@@ -10,10 +10,7 @@ datasource db {
 enum OrderStatus {
   PENDING
   CONFIRMED
-  PREPARING
-  READY
-  COMPLETED
-  CANCELLED
+  REJECTED
 }
 
 model User {
@@ -67,6 +64,7 @@ model Order {
   notes          String?
   totalCents     Int           @default(0)
   status         OrderStatus   @default(PENDING)
+  reason         String?       @map("Reason")
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 

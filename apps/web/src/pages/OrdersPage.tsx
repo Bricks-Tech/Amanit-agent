@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { fetchOrders, type Order } from "../api";
+import { Link } from "react-router-dom";
+import { fetchOrders, updateOrderStatus, type Order, type OrderStatus } from "../api";
 import { useAuth } from "../auth";
 import { OrderItemDetailsModal } from "../components/OrderItemDetailsModal";
+import { RejectReasonModal } from "../components/RejectReasonModal";
 import {
   formatDateShort,
   formatMoney,
@@ -9,6 +11,7 @@ import {
   formatTime,
   itemCount,
 } from "../lib/format";
+import { isOrderStatus, ORDER_STATUSES, orderStatusLabel } from "../lib/orderStatus";
 
 type DateRange = "all" | "today" | "7d" | "30d";
 
@@ -44,6 +47,10 @@ function conversationLabel(order: Order) {
   return `#${id}`;
 }
 
+function orderConversationId(order: Order) {
+  return order.conversationId ?? order.conversation?.id ?? null;
+}
+
 function csvEscape(value: string) {
   if (/[",\n\r]/.test(value)) {
     return `"${value.replace(/"/g, '""')}"`;
@@ -63,6 +70,7 @@ function downloadOrdersCsv(rows: Order[]) {
     "Date",
     "Notes",
     "Status",
+    "Reason",
   ];
 
   const lines = rows.map((order) => {
@@ -77,7 +85,8 @@ function downloadOrdersCsv(rows: Order[]) {
       formatTime(order.createdAt),
       formatDateShort(order.createdAt),
       order.notes ?? "",
-      order.status,
+      isOrderStatus(order.status) ? orderStatusLabel(order.status) : order.status,
+      order.status === "REJECTED" ? order.reason ?? "" : "",
     ]
       .map((cell) => csvEscape(cell))
       .join(",");
@@ -100,11 +109,15 @@ export function OrdersPage() {
   const [query, setQuery] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [language, setLanguage] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | OrderStatus>("all");
   const [dateRange, setDateRange] = useState<DateRange>("all");
   const [minEuros, setMinEuros] = useState("0");
   const [maxEuros, setMaxEuros] = useState("999.99");
   const [error, setError] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [statusBusyId, setStatusBusyId] = useState<string | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<Order | null>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -112,6 +125,41 @@ export function OrdersPage() {
       .then((res) => setOrders(res.orders))
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load"));
   }, [token]);
+
+  function applyUpdatedOrder(updated: Order) {
+    setOrders((prev) => prev.map((order) => (order.id === updated.id ? { ...order, ...updated } : order)));
+    setSelectedOrder((prev) => (prev?.id === updated.id ? { ...prev, ...updated } : prev));
+    setRejectTarget((prev) => (prev?.id === updated.id ? { ...prev, ...updated } : prev));
+  }
+
+  async function persistStatus(order: Order, status: OrderStatus, reason?: string) {
+    if (!token) return;
+    setStatusBusyId(order.id);
+    setStatusError(null);
+    try {
+      const res = await updateOrderStatus(token, order.id, status, reason);
+      applyUpdatedOrder(res.order);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to update status";
+      setStatusError(message);
+      throw err;
+    } finally {
+      setStatusBusyId(null);
+    }
+  }
+
+  async function handleTableStatusChange(order: Order, next: OrderStatus) {
+    if (next === order.status) return;
+    if (next === "REJECTED") {
+      setRejectTarget(order);
+      return;
+    }
+    try {
+      await persistStatus(order, next);
+    } catch {
+      // error surfaced via statusError
+    }
+  }
 
   const filtered = useMemo(() => {
     const minCents = Math.max(0, Math.round(Number(minEuros || 0) * 100));
@@ -146,12 +194,15 @@ export function OrdersPage() {
       const matchesValue =
         order.totalCents >= minCents && order.totalCents <= maxCents;
 
-      return matchesQuery && matchesLanguage && matchesDate && matchesValue;
+      const matchesStatus = statusFilter === "all" || order.status === statusFilter;
+
+      return matchesQuery && matchesLanguage && matchesDate && matchesValue && matchesStatus;
     });
-  }, [orders, query, language, dateRange, minEuros, maxEuros]);
+  }, [orders, query, language, statusFilter, dateRange, minEuros, maxEuros]);
 
   function clearFilters() {
     setLanguage("all");
+    setStatusFilter("all");
     setDateRange("all");
     setMinEuros("0");
     setMaxEuros("999.99");
@@ -206,6 +257,26 @@ export function OrdersPage() {
                 <option value="all">All Languages</option>
                 <option value="spanish">Spanish only</option>
                 <option value="english">English only</option>
+              </select>
+              <img src="/assets/icon-chevron.svg" alt="" width={16} height={16} />
+            </div>
+          </label>
+          <label className="orders-filter-field">
+            <span>Status</span>
+            <div className="orders-select-wrap">
+              <select
+                value={statusFilter}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === "all" || isOrderStatus(value)) setStatusFilter(value);
+                }}
+              >
+                <option value="all">All Statuses</option>
+                {ORDER_STATUSES.map((status) => (
+                  <option key={status} value={status}>
+                    {orderStatusLabel(status)}
+                  </option>
+                ))}
               </select>
               <img src="/assets/icon-chevron.svg" alt="" width={16} height={16} />
             </div>
@@ -268,6 +339,7 @@ export function OrdersPage() {
                   <th>Items</th>
                   <th>Time</th>
                   <th>Date</th>
+                  <th>Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -275,6 +347,9 @@ export function OrdersPage() {
                   const count = itemCount(order.items);
                   const language = orderLanguage(order);
                   const langLabel = displayLanguage(language);
+                  const conversationId = orderConversationId(order);
+                  const conversationText = conversationLabel(order);
+                  const statusValue = isOrderStatus(order.status) ? order.status : "PENDING";
                   return (
                     <tr key={order.id}>
                       <td>
@@ -289,7 +364,18 @@ export function OrdersPage() {
                       <td className="orders-cell-ink">
                         {formatTableLabel(order.tableLabel, order.customerName)}
                       </td>
-                      <td className="orders-cell-muted">{conversationLabel(order)}</td>
+                      <td className="orders-cell-muted">
+                        {conversationId && conversationText !== "—" ? (
+                          <Link
+                            className="order-link"
+                            to={`/dashboard/orders/conversations/${conversationId}`}
+                          >
+                            {conversationText}
+                          </Link>
+                        ) : (
+                          conversationText
+                        )}
+                      </td>
                       <td>
                         {langLabel === "—" ? (
                           "—"
@@ -317,6 +403,28 @@ export function OrdersPage() {
                       </td>
                       <td className="orders-cell-muted">{formatTime(order.createdAt)}</td>
                       <td className="orders-cell-muted">{formatDateShort(order.createdAt)}</td>
+                      <td>
+                        <div
+                          className={`orders-status-pill orders-status-pill--${statusValue.toLowerCase()}`}
+                        >
+                          <select
+                            className="orders-status-select"
+                            value={statusValue}
+                            disabled={statusBusyId === order.id}
+                            aria-label={`Status for order ${order.externalId ?? order.id.slice(0, 6)}`}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              if (isOrderStatus(value)) void handleTableStatusChange(order, value);
+                            }}
+                          >
+                            {ORDER_STATUSES.map((status) => (
+                              <option key={status} value={status}>
+                                {orderStatusLabel(status)}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </td>
                     </tr>
                   );
                 })}
@@ -346,7 +454,43 @@ export function OrdersPage() {
       {selectedOrder ? (
         <OrderItemDetailsModal
           order={selectedOrder}
-          onClose={() => setSelectedOrder(null)}
+          statusBusy={statusBusyId === selectedOrder.id}
+          statusError={statusError}
+          onClose={() => {
+            setSelectedOrder(null);
+            setStatusError(null);
+          }}
+          onStatusChange={async (status) => {
+            await persistStatus(selectedOrder, status);
+          }}
+          onRequestReject={() => {
+            setStatusError(null);
+            setRejectTarget(selectedOrder);
+          }}
+        />
+      ) : null}
+
+      {rejectTarget ? (
+        <RejectReasonModal
+          orderLabel={`#${rejectTarget.externalId ?? rejectTarget.id.slice(0, 6)}`}
+          initialReason={rejectTarget.reason}
+          isEditing={rejectTarget.status === "REJECTED"}
+          busy={statusBusyId === rejectTarget.id}
+          error={statusError}
+          onCancel={() => {
+            setRejectTarget(null);
+            setStatusError(null);
+          }}
+          onSubmit={(reason) => {
+            void persistStatus(rejectTarget, "REJECTED", reason)
+              .then(() => {
+                setRejectTarget(null);
+                setStatusError(null);
+              })
+              .catch(() => {
+                // keep modal open; error shown via statusError
+              });
+          }}
         />
       ) : null}
     </>
