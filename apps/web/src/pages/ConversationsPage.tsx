@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { fetchConversations, type Conversation } from "../api";
 import { useAuth } from "../auth";
+import { MenuSelect } from "../components/MenuSelect";
 import { PeriodTabs, type Period } from "../components/PeriodTabs";
 import {
   conversationCode,
@@ -93,15 +94,20 @@ export function ConversationsPage() {
               placeholder="Search table or conversation ID"
             />
           </label>
-          <label className="conv-language">
-            <img src="/assets/conv-filter.svg" alt="" width={16} height={16} />
-            <select value={language} onChange={(e) => setLanguage(e.target.value)}>
-              <option value="all">All languages</option>
-              <option value="spanish">Spanish</option>
-              <option value="english">English</option>
-            </select>
-            <img src="/assets/conv-chevron.svg" alt="" width={16} height={16} />
-          </label>
+          <MenuSelect
+            className="conv-language-select"
+            triggerClassName="conv-language"
+            ariaLabel="Filter by language"
+            leadingIcon="/assets/conv-filter.svg"
+            chevronIcon="/assets/conv-chevron.svg"
+            value={language}
+            onChange={setLanguage}
+            options={[
+              { value: "all", label: "All languages" },
+              { value: "spanish", label: "Spanish" },
+              { value: "english", label: "English" },
+            ]}
+          />
         </div>
       </div>
       <div className="content-pad">

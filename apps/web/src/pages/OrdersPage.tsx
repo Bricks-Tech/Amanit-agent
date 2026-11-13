@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { fetchOrders, updateOrderStatus, type Order, type OrderStatus } from "../api";
 import { useAuth } from "../auth";
+import { MenuSelect } from "../components/MenuSelect";
 import { OrderItemDetailsModal } from "../components/OrderItemDetailsModal";
 import { RejectReasonModal } from "../components/RejectReasonModal";
 import {
@@ -247,55 +248,56 @@ export function OrdersPage() {
 
       {filtersOpen ? (
         <div className="orders-filters" id="orders-filters-panel">
-          <label className="orders-filter-field">
+          <div className="orders-filter-field">
             <span>Language</span>
-            <div className="orders-select-wrap">
-              <select
-                value={language}
-                onChange={(e) => setLanguage(e.target.value)}
-              >
-                <option value="all">All Languages</option>
-                <option value="spanish">Spanish only</option>
-                <option value="english">English only</option>
-              </select>
-              <img src="/assets/icon-chevron.svg" alt="" width={16} height={16} />
-            </div>
-          </label>
-          <label className="orders-filter-field">
+            <MenuSelect
+              className="orders-menu-select"
+              triggerClassName="orders-select-wrap"
+              ariaLabel="Filter by language"
+              value={language}
+              onChange={setLanguage}
+              options={[
+                { value: "all", label: "All Languages" },
+                { value: "spanish", label: "Spanish only" },
+                { value: "english", label: "English only" },
+              ]}
+            />
+          </div>
+          <div className="orders-filter-field">
             <span>Status</span>
-            <div className="orders-select-wrap">
-              <select
-                value={statusFilter}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  if (value === "all" || isOrderStatus(value)) setStatusFilter(value);
-                }}
-              >
-                <option value="all">All Statuses</option>
-                {ORDER_STATUSES.map((status) => (
-                  <option key={status} value={status}>
-                    {orderStatusLabel(status)}
-                  </option>
-                ))}
-              </select>
-              <img src="/assets/icon-chevron.svg" alt="" width={16} height={16} />
-            </div>
-          </label>
-          <label className="orders-filter-field">
+            <MenuSelect
+              className="orders-menu-select"
+              triggerClassName="orders-select-wrap"
+              ariaLabel="Filter by status"
+              value={statusFilter}
+              onChange={(value) => {
+                if (value === "all" || isOrderStatus(value)) setStatusFilter(value);
+              }}
+              options={[
+                { value: "all", label: "All Statuses" },
+                ...ORDER_STATUSES.map((status) => ({
+                  value: status,
+                  label: orderStatusLabel(status),
+                })),
+              ]}
+            />
+          </div>
+          <div className="orders-filter-field">
             <span>Date Range</span>
-            <div className="orders-select-wrap">
-              <select
-                value={dateRange}
-                onChange={(e) => setDateRange(e.target.value as DateRange)}
-              >
-                <option value="all">All Time</option>
-                <option value="today">Today</option>
-                <option value="7d">Last 7 days</option>
-                <option value="30d">Last 30 days</option>
-              </select>
-              <img src="/assets/icon-chevron.svg" alt="" width={16} height={16} />
-            </div>
-          </label>
+            <MenuSelect
+              className="orders-menu-select"
+              triggerClassName="orders-select-wrap"
+              ariaLabel="Filter by date range"
+              value={dateRange}
+              onChange={(value) => setDateRange(value as DateRange)}
+              options={[
+                { value: "all", label: "All Time" },
+                { value: "today", label: "Today" },
+                { value: "7d", label: "Last 7 days" },
+                { value: "30d", label: "Last 30 days" },
+              ]}
+            />
+          </div>
           <label className="orders-filter-field">
             <span>Min Value</span>
             <div className="orders-value-input">
