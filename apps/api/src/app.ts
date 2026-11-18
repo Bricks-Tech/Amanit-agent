@@ -19,6 +19,11 @@ export function createApp() {
     res.json({ ok: true, service: "amanit-api" });
   });
 
+  app.get("/config", (_req, res) => {
+    const agentId = process.env.ELEVENLABS_AGENT_ID?.trim() || null;
+    res.json({ agentId });
+  });
+
   app.use("/auth", authRouter);
   app.use("/conversations", conversationsRouter);
   app.use("/orders", ordersRouter);

@@ -8,7 +8,7 @@ apps/
   api/   # Express + Prisma + Postgres
 ```
 
-Agent ID: `agent_2401m2tcwarpf8598fxz7zyk34zc`
+Agent ID: `ELEVENLABS_AGENT_ID` on the API (App Runner). The landing page reads it from `GET /config`.
 
 ## Database (AWS RDS)
 

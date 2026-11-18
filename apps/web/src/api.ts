@@ -80,6 +80,10 @@ async function request<T>(
   return response.json() as Promise<T>;
 }
 
+export function fetchPublicConfig() {
+  return request<{ agentId: string | null }>("/config");
+}
+
 export function loginRequest(email: string, password: string) {
   return request<{ token: string; user: { id: string; email: string; name?: string | null } }>(
     "/auth/login",
