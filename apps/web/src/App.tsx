@@ -34,6 +34,7 @@ export function App() {
         <Route path="conversations" element={<ConversationsPage />} />
         <Route path="conversations/:id" element={<ConversationDetailPage />} />
         <Route path="orders" element={<OrdersPage />} />
+        <Route path="orders/conversations/:id" element={<ConversationDetailPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
