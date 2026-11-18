@@ -1,5 +1,6 @@
 import type { Conversation, OrderItem } from "../api";
 import { formatDateShort, formatDuration, formatMoney, formatTableLabel, formatTime } from "./format";
+import { getActiveTimeZone, isSameZonedDay } from "./timeZone";
 
 function languageKey(language?: string | null) {
   return (language ?? "").trim().toLowerCase().replace(/_/g, "-");
@@ -87,7 +88,7 @@ export function formatListWhen(value?: string | null) {
   if (!value) return "—";
   const date = new Date(value);
   const time = formatTime(value);
-  if (date.toDateString() === new Date().toDateString()) return `Today, ${time}`;
+  if (isSameZonedDay(date, getActiveTimeZone())) return `Today, ${time}`;
   return `${formatDateShort(value)}, ${time}`;
 }
 
@@ -101,6 +102,8 @@ export function formatStarted(value?: string | null) {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
+    timeZone: getActiveTimeZone(),
+    timeZoneName: "short",
   })
     .format(new Date(value))
     .replace(",", "");

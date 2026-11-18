@@ -9,14 +9,10 @@ import {
   formatTime,
   itemCount,
 } from "../lib/format";
+import { startOfZonedPeriod } from "../lib/timeZone";
+import { TimeZoneSelect, useTimeZone } from "../timeZoneContext";
 
 type DateRange = "all" | "today" | "7d" | "30d";
-
-function startOfDay(d: Date) {
-  const copy = new Date(d);
-  copy.setHours(0, 0, 0, 0);
-  return copy;
-}
 
 function languageIcon(language?: string | null) {
   const key = (language ?? "").trim().toLowerCase();
@@ -96,6 +92,7 @@ function downloadOrdersCsv(rows: Order[]) {
 
 export function OrdersPage() {
   const { token } = useAuth();
+  const { timeZone } = useTimeZone();
   const [orders, setOrders] = useState<Order[]>([]);
   const [query, setQuery] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -117,7 +114,7 @@ export function OrdersPage() {
     const minCents = Math.max(0, Math.round(Number(minEuros || 0) * 100));
     const maxCents = Math.max(0, Math.round(Number(maxEuros || 999.99) * 100));
     const now = new Date();
-    const todayStart = startOfDay(now).getTime();
+    const todayStart = startOfZonedPeriod("today", timeZone).getTime();
 
     return orders.filter((order) => {
       const haystack = [
@@ -148,7 +145,7 @@ export function OrdersPage() {
 
       return matchesQuery && matchesLanguage && matchesDate && matchesValue;
     });
-  }, [orders, query, language, dateRange, minEuros, maxEuros]);
+  }, [orders, query, language, dateRange, minEuros, maxEuros, timeZone]);
 
   function clearFilters() {
     setLanguage("all");
@@ -160,8 +157,11 @@ export function OrdersPage() {
   return (
     <>
       <header className="page-header">
-        <h1>Orders</h1>
-        <p>Track and manage all orders placed by your voice agent</p>
+        <div>
+          <h1>Orders</h1>
+          <p>Track and manage all orders placed by your voice agent</p>
+        </div>
+        <TimeZoneSelect />
       </header>
 
       <div className="toolbar orders-toolbar">

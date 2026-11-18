@@ -1,3 +1,7 @@
+import { getActiveTimeZone } from "./timeZone";
+
+/** Selected display timezone. Defaults to the browser until the user changes it. */
+
 export function formatMoney(cents: number) {
   return new Intl.NumberFormat("en-EU", {
     style: "currency",
@@ -7,26 +11,38 @@ export function formatMoney(cents: number) {
 
 export function formatWhen(value?: string | null) {
   if (!value) return "—";
-  return new Date(value).toLocaleString();
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: getActiveTimeZone(),
+    timeZoneName: "short",
+  }).format(new Date(value));
 }
 
-/** 24h time e.g. 21:43 — matches Orders Figma listing */
+/** 24h time in the browser timezone, with the zone name, e.g. 21:43 GMT+4 */
 export function formatTime(value?: string | null) {
   if (!value) return "—";
   return new Intl.DateTimeFormat("en-GB", {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
+    timeZone: getActiveTimeZone(),
+    timeZoneName: "short",
   }).format(new Date(value));
 }
 
-/** Date e.g. 19 Oct 2026 — matches Orders Figma listing */
+/** Date in the browser timezone, e.g. 19 Oct 2026 */
 export function formatDateShort(value?: string | null) {
   if (!value) return "—";
   return new Intl.DateTimeFormat("en-GB", {
     day: "numeric",
     month: "short",
     year: "numeric",
+    timeZone: getActiveTimeZone(),
   }).format(new Date(value));
 }
 

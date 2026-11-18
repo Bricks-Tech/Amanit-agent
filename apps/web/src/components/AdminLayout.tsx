@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { fetchOrders } from "../api";
 import { useAuth } from "../auth";
+import { TimeZoneProvider } from "../timeZoneContext";
 
 export function AdminLayout() {
   const { user, logout, token } = useAuth();
@@ -20,6 +21,7 @@ export function AdminLayout() {
   }, [token]);
 
   return (
+    <TimeZoneProvider>
     <div className="admin-root admin-shell">
       <aside className="admin-sidebar">
         <div className="sidebar-brand">
@@ -52,5 +54,6 @@ export function AdminLayout() {
         <Outlet />
       </div>
     </div>
+    </TimeZoneProvider>
   );
 }

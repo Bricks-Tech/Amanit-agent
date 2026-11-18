@@ -285,6 +285,37 @@ body {
   gap: 0.5rem;
 }
 
+.page-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.tz-field {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tz-field span {
+  color: var(--admin-muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.tz-field select {
+  height: 38px;
+  min-width: 260px;
+  border-radius: 8px;
+  border: 1px solid var(--admin-border);
+  background: white;
+  color: var(--admin-ink);
+  font: inherit;
+  font-size: 0.875rem;
+  padding: 0 0.75rem;
+}
+
 .sidebar-footer .user {
   color: var(--admin-nav-muted);
   font-size: 0.8rem;
@@ -320,6 +351,10 @@ body {
   background: white;
   border-bottom: 1px solid var(--admin-border);
   padding: 1.6rem 2rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.5rem;
 }
 
 .page-header h1 {
@@ -1638,6 +1673,21 @@ body {
   .admin-sidebar {
     position: relative;
     height: auto;
+  }
+
+  .page-header,
+  .conv-detail-header {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .tz-field {
+    width: 100%;
+  }
+
+  .tz-field select {
+    min-width: 0;
+    flex: 1;
   }
 
   .stats-grid,

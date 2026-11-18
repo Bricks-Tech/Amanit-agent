@@ -14,22 +14,14 @@ import {
   orderSummary,
 } from "../lib/conversationView";
 import { formatDuration } from "../lib/format";
+import { startOfZonedPeriod } from "../lib/timeZone";
+import { TimeZoneSelect, useTimeZone } from "../timeZoneContext";
 
 const PAGE_SIZE = 10;
 
-function startOfPeriod(period: Period) {
-  const now = new Date();
-  if (period === "today") return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  if (period === "week") {
-    const day = now.getDay();
-    const diff = day === 0 ? 6 : day - 1;
-    return new Date(now.getFullYear(), now.getMonth(), now.getDate() - diff);
-  }
-  return new Date(now.getFullYear(), now.getMonth(), 1);
-}
-
 export function ConversationsPage() {
   const { token } = useAuth();
+  const { timeZone } = useTimeZone();
   const [period, setPeriod] = useState<Period>("today");
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [query, setQuery] = useState("");
@@ -49,7 +41,7 @@ export function ConversationsPage() {
   }, [period, query, language]);
 
   const filtered = useMemo(() => {
-    const start = startOfPeriod(period).getTime();
+    const start = startOfZonedPeriod(period, timeZone).getTime();
     return conversations.filter((conversation) => {
       const when = new Date(conversation.startedAt ?? conversation.createdAt).getTime();
       if (when < start) return false;
@@ -67,7 +59,7 @@ export function ConversationsPage() {
       const matchesLanguage = language === "all" || lang === language;
       return matchesQuery && matchesLanguage;
     });
-  }, [conversations, query, language, period]);
+  }, [conversations, query, language, period, timeZone]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount - 1);
@@ -79,8 +71,11 @@ export function ConversationsPage() {
   return (
     <>
       <header className="page-header">
-        <h1>Conversations</h1>
-        <p>Recordings and transcripts of guest conversations at Amanit Sitges</p>
+        <div>
+          <h1>Conversations</h1>
+          <p>Recordings and transcripts of guest conversations at Amanit Sitges</p>
+        </div>
+        <TimeZoneSelect />
       </header>
       <div className="toolbar conv-toolbar">
         <PeriodTabs value={period} onChange={setPeriod} />

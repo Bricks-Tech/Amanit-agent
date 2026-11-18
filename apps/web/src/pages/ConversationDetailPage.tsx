@@ -18,6 +18,7 @@ import {
 } from "../lib/conversationView";
 import { formatDuration } from "../lib/format";
 import { waveformPeaks } from "../lib/waveform";
+import { TimeZoneSelect, useTimeZone } from "../timeZoneContext";
 
 const PLACEHOLDER_PEAKS = [0.35, 0.55, 0.4, 0.7, 0.5, 0.85, 0.45, 0.6, 0.38, 0.72, 0.5, 0.66];
 
@@ -40,6 +41,7 @@ function PauseIcon() {
 export function ConversationDetailPage() {
   const { id } = useParams();
   const { token } = useAuth();
+  useTimeZone();
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
@@ -152,12 +154,15 @@ export function ConversationDetailPage() {
             {formatDuration(conversation.durationSeconds)}
           </p>
         </div>
-        {order ? (
-          <Link className="conv-view-order" to="/dashboard/orders">
-            View order #{order.externalId ?? order.id.slice(0, 6)}
-            <img src="/assets/conv-arrow.svg" alt="" width={16} height={16} />
-          </Link>
-        ) : null}
+        <div className="page-header-actions">
+          <TimeZoneSelect />
+          {order ? (
+            <Link className="conv-view-order" to="/dashboard/orders">
+              View order #{order.externalId ?? order.id.slice(0, 6)}
+              <img src="/assets/conv-arrow.svg" alt="" width={16} height={16} />
+            </Link>
+          ) : null}
+        </div>
       </header>
 
       <div className="conv-detail-grid">

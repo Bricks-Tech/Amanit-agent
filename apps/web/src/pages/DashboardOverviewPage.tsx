@@ -5,6 +5,8 @@ import { useAuth } from "../auth";
 import { PeriodTabs, type Period } from "../components/PeriodTabs";
 import { displayLanguage, isEnglish } from "../lib/conversationView";
 import { formatMoney, relativeTime } from "../lib/format";
+import { startOfZonedPeriod, zonedDayIndex } from "../lib/timeZone";
+import { TimeZoneSelect, useTimeZone } from "../timeZoneContext";
 
 function chartPath(values: number[]) {
   const width = 1000;
@@ -21,31 +23,15 @@ function chartPath(values: number[]) {
   return { line, area };
 }
 
-function startOfPeriod(period: Period) {
-  const now = new Date();
-  if (period === "today") {
-    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  }
-  if (period === "week") {
-    const day = now.getDay();
-    const diff = day === 0 ? 6 : day - 1;
-    return new Date(now.getFullYear(), now.getMonth(), now.getDate() - diff);
-  }
-  return new Date(now.getFullYear(), now.getMonth(), 1);
-}
-
-function dailyConversationCounts(conversations: Conversation[], period: Period) {
-  const start = startOfPeriod(period);
+function dailyConversationCounts(conversations: Conversation[], period: Period, timeZone: string) {
+  const start = startOfZonedPeriod(period, timeZone);
   const days = period === "today" ? 1 : period === "week" ? 7 : 30;
   const buckets = Array.from({ length: days }, () => 0);
 
   for (const conversation of conversations) {
     const created = new Date(conversation.createdAt);
     if (created < start) continue;
-    const index = Math.min(
-      days - 1,
-      Math.floor((created.getTime() - start.getTime()) / (24 * 60 * 60 * 1000))
-    );
+    const index = Math.min(days - 1, zonedDayIndex(created, start, timeZone));
     if (index >= 0) buckets[index] += 1;
   }
 
@@ -54,6 +40,7 @@ function dailyConversationCounts(conversations: Conversation[], period: Period) 
 
 export function DashboardOverviewPage() {
   const { token } = useAuth();
+  const { timeZone } = useTimeZone();
   const [period, setPeriod] = useState<Period>("today");
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -69,7 +56,7 @@ export function DashboardOverviewPage() {
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load"));
   }, [token]);
 
-  const periodStart = startOfPeriod(period);
+  const periodStart = startOfZonedPeriod(period, timeZone);
   const filteredConversations = conversations.filter(
     (c) => new Date(c.createdAt) >= periodStart
   );
@@ -81,8 +68,8 @@ export function DashboardOverviewPage() {
   const english = filteredConversations.filter((c) => displayLanguage(c.language) === "English").length;
 
   const chartValues = useMemo(
-    () => dailyConversationCounts(conversations, period),
-    [conversations, period]
+    () => dailyConversationCounts(conversations, period, timeZone),
+    [conversations, period, timeZone]
   );
   const { line, area } = chartPath(chartValues.length ? chartValues : [0]);
 
@@ -93,8 +80,11 @@ export function DashboardOverviewPage() {
   return (
     <>
       <header className="page-header">
-        <h1>Dashboard Overview</h1>
-        <p>Monitor your voice agent’s performance at Amanit Sitges, Barcelona</p>
+        <div>
+          <h1>Dashboard Overview</h1>
+          <p>Monitor your voice agent’s performance at Amanit Sitges, Barcelona</p>
+        </div>
+        <TimeZoneSelect />
       </header>
       <div className="toolbar" aria-label="Period">
         <PeriodTabs value={period} onChange={setPeriod} />
