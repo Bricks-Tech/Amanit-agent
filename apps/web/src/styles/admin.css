@@ -25,15 +25,11 @@ body {
   background: var(--admin-bg, #f8fafc);
 }
 
+/* Host is inert; elevenlabs-convai uses :host { pointer-events:none; inset:0 } and
+   only enables pointer-events on its own controls. Do not force pointer-events:auto
+   on the custom element or it blocks the whole page (nav / period tabs). */
 .voice-widget-host {
-  position: fixed;
-  inset: auto 0 0 auto;
-  z-index: 1000;
-  pointer-events: none;
-}
-
-.voice-widget-host > * {
-  pointer-events: auto;
+  position: contents;
 }
 
 .admin-root,
