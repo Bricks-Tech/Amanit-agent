@@ -25,6 +25,17 @@ body {
   background: var(--admin-bg, #f8fafc);
 }
 
+.voice-widget-host {
+  position: fixed;
+  inset: auto 0 0 auto;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.voice-widget-host > * {
+  pointer-events: auto;
+}
+
 .admin-root,
 .login-root {
   min-height: 100vh;

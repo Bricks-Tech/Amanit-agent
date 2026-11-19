@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./auth";
 import { AdminLayout } from "./components/AdminLayout";
+import { VoiceWidget } from "./components/VoiceWidget";
 import { ConversationDetailPage } from "./pages/ConversationDetailPage";
 import { ConversationsPage } from "./pages/ConversationsPage";
 import { DashboardOverviewPage } from "./pages/DashboardOverviewPage";
@@ -17,26 +18,29 @@ function Protected({ children }: { children: ReactNode }) {
 
 export function App() {
   return (
-    <Routes>
-      {/* Figma admin is the default local entry */}
-      <Route path="/" element={<LoginPage />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/voice" element={<LandingPage />} />
-      <Route
-        path="/dashboard"
-        element={
-          <Protected>
-            <AdminLayout />
-          </Protected>
-        }
-      >
-        <Route index element={<DashboardOverviewPage />} />
-        <Route path="conversations" element={<ConversationsPage />} />
-        <Route path="conversations/:id" element={<ConversationDetailPage />} />
-        <Route path="orders" element={<OrdersPage />} />
-        <Route path="orders/conversations/:id" element={<ConversationDetailPage />} />
-      </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <>
+      <Routes>
+        {/* Figma admin is the default local entry */}
+        <Route path="/" element={<LoginPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/voice" element={<LandingPage />} />
+        <Route
+          path="/dashboard"
+          element={
+            <Protected>
+              <AdminLayout />
+            </Protected>
+          }
+        >
+          <Route index element={<DashboardOverviewPage />} />
+          <Route path="conversations" element={<ConversationsPage />} />
+          <Route path="conversations/:id" element={<ConversationDetailPage />} />
+          <Route path="orders" element={<OrdersPage />} />
+          <Route path="orders/conversations/:id" element={<ConversationDetailPage />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      <VoiceWidget />
+    </>
   );
 }

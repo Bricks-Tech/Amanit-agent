@@ -20,7 +20,13 @@ export function createApp() {
   });
 
   app.get("/config", (_req, res) => {
-    const agentId = process.env.ELEVENLABS_AGENT_ID?.trim() || null;
+    // Env paste mistakes sometimes duplicate the whole id (id+id).
+    const raw = process.env.ELEVENLABS_AGENT_ID?.trim() || "";
+    let agentId: string | null = raw || null;
+    if (raw && raw.length % 2 === 0) {
+      const half = raw.slice(0, raw.length / 2);
+      if (half && half + half === raw) agentId = half;
+    }
     res.json({ agentId });
   });
 

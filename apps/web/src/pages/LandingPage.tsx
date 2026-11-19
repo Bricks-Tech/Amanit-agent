@@ -1,24 +1,6 @@
-import { createElement, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { fetchPublicConfig } from "../api";
 
 export function LandingPage() {
-  const [agentId, setAgentId] = useState<string | null | undefined>(undefined);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetchPublicConfig()
-      .then((config) => {
-        if (!cancelled) setAgentId(config.agentId);
-      })
-      .catch(() => {
-        if (!cancelled) setAgentId(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   return (
     <div className="landing-root">
       <div className="bg-wash" />
@@ -98,18 +80,7 @@ export function LandingPage() {
               </ul>
             </div>
           </div>
-          <p className="mic-hint">
-            {agentId
-              ? "Use the round button in the corner to start speaking."
-              : agentId === null
-                ? "The voice assistant is unavailable."
-                : "Connecting the voice assistant…"}
-          </p>
-          {agentId
-            ? createElement("elevenlabs-convai", {
-                "agent-id": agentId,
-              })
-            : null}
+          <p className="mic-hint">Use the round button in the corner to start speaking.</p>
         </section>
       </main>
 
