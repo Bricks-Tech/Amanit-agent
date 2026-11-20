@@ -80,7 +80,9 @@ export function LandingPage() {
               </ul>
             </div>
           </div>
-          <p className="mic-hint">Use the round button in the corner to start speaking.</p>
+          <p className="mic-hint">
+            Enter your table and language, then use the round button to start speaking.
+          </p>
         </section>
       </main>
 

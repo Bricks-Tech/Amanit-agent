@@ -1,8 +1,10 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { OrderStatus, type Prisma } from "@prisma/client";
+import { resolveAgentLanguage, welcomeMessageForLanguage } from "../lib/agentLanguage.js";
 import { asBytes } from "../lib/bytes.js";
 import { extractConversationLanguage } from "../lib/conversationLanguage.js";
 import { prisma } from "../lib/prisma.js";
+import { requireWebhookSecret } from "../lib/webhookAuth.js";
 
 export const webhooksRouter = Router();
 
@@ -439,6 +441,66 @@ async function ingestElevenLabsWebhook(
     chatId: conversation.id,
   });
 }
+
+/**
+ * Conversation initiation webhook (phone / WhatsApp / SMS).
+ * ElevenLabs POSTs caller context; response must be conversation_initiation_client_data.
+ * Enable “Fetch initiation client data from a webhook” + Language override in agent Security.
+ */
+async function initiationClientData(req: Request, res: Response) {
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const callerId = asString(body.caller_id) ?? asString(body.callerId);
+  const calledNumber = asString(body.called_number) ?? asString(body.calledNumber);
+  const tableFromBody =
+    asString(body.table_number) ??
+    asString(body.tableNumber) ??
+    asString(body.table) ??
+    "0";
+
+  let priorLanguage: string | undefined;
+  if (callerId) {
+    const prior = await prisma.conversation.findFirst({
+      where: {
+        callerPhone: callerId,
+        language: { not: null },
+      },
+      orderBy: { createdAt: "desc" },
+      select: { language: true },
+    });
+    priorLanguage = prior?.language ?? undefined;
+  }
+
+  const language = resolveAgentLanguage(
+    body.language ?? body.preferred_language ?? body.preferredLanguage,
+    priorLanguage
+  );
+  const welcomeMessage = welcomeMessageForLanguage(language);
+
+  return res.status(200).json({
+    type: "conversation_initiation_client_data",
+    conversation_config_override: {
+      agent: {
+        language: language.code,
+        first_message: welcomeMessage,
+      },
+    },
+    dynamic_variables: {
+      table_number: tableFromBody,
+      language: language.label,
+      user_language: language.label,
+      welcome_message: welcomeMessage,
+      caller_id: callerId ?? "",
+      called_number: calledNumber ?? "",
+    },
+  });
+}
+
+webhooksRouter.post("/elevenlabs/initiation", requireWebhookSecret, (req, res, next) => {
+  void initiationClientData(req, res).catch(next);
+});
+webhooksRouter.post("/elevenlabs/conversation-initiation", requireWebhookSecret, (req, res, next) => {
+  void initiationClientData(req, res).catch(next);
+});
 
 // Public post-call webhook. No shared secret or HMAC check.
 webhooksRouter.post("/elevenlabs/webhook", ingestElevenLabsWebhook);
