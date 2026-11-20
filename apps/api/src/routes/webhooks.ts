@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { OrderStatus, type Prisma } from "@prisma/client";
-import { resolveAgentLanguage, welcomeMessageForLanguage } from "../lib/agentLanguage.js";
+import { resolveAgentLanguage } from "../lib/agentLanguage.js";
+// import { welcomeMessageForLanguage } from "../lib/agentLanguage.js";
 import { asBytes } from "../lib/bytes.js";
 import { extractConversationLanguage } from "../lib/conversationLanguage.js";
 import { prisma } from "../lib/prisma.js";
@@ -451,11 +452,12 @@ async function initiationClientData(req: Request, res: Response) {
   const body = (req.body ?? {}) as Record<string, unknown>;
   const callerId = asString(body.caller_id) ?? asString(body.callerId);
   const calledNumber = asString(body.called_number) ?? asString(body.calledNumber);
+  const defaultTable = process.env.ELEVENLABS_DEFAULT_TABLE_NUMBER?.trim() || "0";
   const tableFromBody =
     asString(body.table_number) ??
     asString(body.tableNumber) ??
     asString(body.table) ??
-    "0";
+    defaultTable;
 
   let priorLanguage: string | undefined;
   if (callerId) {
@@ -474,21 +476,22 @@ async function initiationClientData(req: Request, res: Response) {
     body.language ?? body.preferred_language ?? body.preferredLanguage,
     priorLanguage
   );
-  const welcomeMessage = welcomeMessageForLanguage(language);
+  // Temporarily disabled — only send language from backend for now.
+  // const welcomeMessage = welcomeMessageForLanguage(language);
 
   return res.status(200).json({
     type: "conversation_initiation_client_data",
     conversation_config_override: {
       agent: {
         language: language.code,
-        first_message: welcomeMessage,
+        // first_message: welcomeMessage,
       },
     },
     dynamic_variables: {
       table_number: tableFromBody,
       language: language.label,
       user_language: language.label,
-      welcome_message: welcomeMessage,
+      // welcome_message: welcomeMessage,
       caller_id: callerId ?? "",
       called_number: calledNumber ?? "",
     },

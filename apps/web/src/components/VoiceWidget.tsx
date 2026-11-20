@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useLocation } from "react-router-dom";
 import { fetchPublicConfig } from "../api";
 import { normalizeAgentId } from "../lib/agentId";
-import { normalizeTableNumber, tableNumberFromSearch } from "../lib/tableNumber";
 import {
   languageFromCode,
   resolveWidgetLanguage,
@@ -10,7 +9,7 @@ import {
   type WidgetLanguage,
 } from "../lib/widgetLanguage";
 
-const DEFAULT_TABLE_NUMBER = "0";
+const FALLBACK_TABLE_NUMBER = "0";
 
 function resolveAgentId(fromApi: string | null | undefined) {
   return (
@@ -24,12 +23,9 @@ export function VoiceWidget() {
   const [agentId, setAgentId] = useState<string | null>(() =>
     normalizeAgentId(import.meta.env.VITE_ELEVENLABS_AGENT_ID)
   );
+  const [tableNumber, setTableNumber] = useState(FALLBACK_TABLE_NUMBER);
   const hostRef = useRef<HTMLDivElement | null>(null);
 
-  const presetTable = useMemo(
-    () => tableNumberFromSearch(location.search) ?? DEFAULT_TABLE_NUMBER,
-    [location.search]
-  );
   const presetLanguage = useMemo(
     () =>
       resolveWidgetLanguage(
@@ -39,16 +35,15 @@ export function VoiceWidget() {
     [location.search]
   );
 
-  const [draftTable, setDraftTable] = useState(presetTable);
   const [draftLang, setDraftLang] = useState<"en" | "es">(presetLanguage.code);
-  const [ready, setReady] = useState(false);
-  const [tableNumber, setTableNumber] = useState(presetTable);
-  const [language, setLanguage] = useState<WidgetLanguage>(presetLanguage);
+  const [session, setSession] = useState<{
+    language: WidgetLanguage;
+    key: number;
+  } | null>(null);
 
   useEffect(() => {
-    setDraftTable(presetTable);
     setDraftLang(presetLanguage.code);
-  }, [presetTable, presetLanguage]);
+  }, [presetLanguage]);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,10 +51,13 @@ export function VoiceWidget() {
       .then((config) => {
         if (cancelled) return;
         setAgentId(resolveAgentId(config.agentId));
+        const fromApi = config.tableNumber?.trim();
+        setTableNumber(fromApi || FALLBACK_TABLE_NUMBER);
       })
       .catch(() => {
         if (cancelled) return;
         setAgentId(normalizeAgentId(import.meta.env.VITE_ELEVENLABS_AGENT_ID));
+        setTableNumber(FALLBACK_TABLE_NUMBER);
       });
     return () => {
       cancelled = true;
@@ -68,20 +66,20 @@ export function VoiceWidget() {
 
   useEffect(() => {
     const host = hostRef.current;
-    if (!host || !agentId || !ready) return;
+    if (!host || !agentId || !session) return;
 
     host.replaceChildren();
-    const welcomeMessage = welcomeMessageForLanguage(language);
+    const welcomeMessage = welcomeMessageForLanguage(session.language);
     const widget = document.createElement("elevenlabs-convai");
     widget.setAttribute("agent-id", agentId);
-    widget.setAttribute("override-language", language.code);
+    widget.setAttribute("override-language", session.language.code);
     widget.setAttribute("override-first-message", welcomeMessage);
     widget.setAttribute(
       "dynamic-variables",
       JSON.stringify({
         table_number: tableNumber,
-        language: language.label,
-        user_language: language.label,
+        language: session.language.label,
+        user_language: session.language.label,
         welcome_message: welcomeMessage,
       })
     );
@@ -90,60 +88,41 @@ export function VoiceWidget() {
     return () => {
       host.replaceChildren();
     };
-  }, [agentId, ready, tableNumber, language]);
+  }, [agentId, session, tableNumber]);
 
-  function startCall(event: FormEvent) {
+  function applyLanguage(event: FormEvent) {
     event.preventDefault();
-    const nextTable = normalizeTableNumber(draftTable) ?? DEFAULT_TABLE_NUMBER;
     const nextLanguage = languageFromCode(draftLang);
-    setTableNumber(nextTable);
-    setLanguage(nextLanguage);
-    setReady(true);
-  }
-
-  function changeSettings() {
-    setReady(false);
+    setSession((prev) => ({
+      language: nextLanguage,
+      key: (prev?.key ?? 0) + 1,
+    }));
   }
 
   if (!agentId) return null;
 
   return (
     <div className="voice-widget-root">
-      {!ready ? (
-        <form className="voice-setup" onSubmit={startCall}>
-          <p className="voice-setup__title">Before you call</p>
-          <label className="voice-setup__field">
-            <span>Table number</span>
-            <input
-              value={draftTable}
-              onChange={(e) => setDraftTable(e.target.value)}
-              inputMode="numeric"
-              placeholder="e.g. 7"
-              aria-label="Table number"
-              required
-            />
-          </label>
-          <label className="voice-setup__field">
-            <span>Language</span>
-            <select
-              value={draftLang}
-              onChange={(e) => setDraftLang(e.target.value === "en" ? "en" : "es")}
-              aria-label="Language"
-            >
-              <option value="es">Spanish</option>
-              <option value="en">English</option>
-            </select>
-          </label>
-          <button type="submit" className="voice-setup__start">
-            Continue
-          </button>
-        </form>
-      ) : (
-        <button type="button" className="voice-setup-chip" onClick={changeSettings}>
-          Table {tableNumber} · {language.label} · change
+      <form className="voice-setup" onSubmit={applyLanguage}>
+        <p className="voice-setup__title">
+          {session ? "Language" : "Before you call"}
+        </p>
+        <label className="voice-setup__field">
+          <span>Language</span>
+          <select
+            value={draftLang}
+            onChange={(e) => setDraftLang(e.target.value === "en" ? "en" : "es")}
+            aria-label="Language"
+          >
+            <option value="es">Spanish</option>
+            <option value="en">English</option>
+          </select>
+        </label>
+        <button type="submit" className="voice-setup__start">
+          {session ? "Apply" : "Continue"}
         </button>
-      )}
-      <div ref={hostRef} className="voice-widget-host" aria-hidden={!ready} />
+      </form>
+      <div ref={hostRef} className="voice-widget-host" aria-hidden={!session} />
     </div>
   );
 }

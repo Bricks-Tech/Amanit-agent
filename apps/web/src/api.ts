@@ -81,7 +81,7 @@ async function request<T>(
 }
 
 export function fetchPublicConfig() {
-  return request<{ agentId: string | null }>("/config");
+  return request<{ agentId: string | null; tableNumber?: string | null }>("/config");
 }
 
 export function loginRequest(email: string, password: string) {

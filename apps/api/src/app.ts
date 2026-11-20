@@ -27,7 +27,8 @@ export function createApp() {
       const half = raw.slice(0, raw.length / 2);
       if (half && half + half === raw) agentId = half;
     }
-    res.json({ agentId });
+    const tableNumber = process.env.ELEVENLABS_DEFAULT_TABLE_NUMBER?.trim() || "0";
+    res.json({ agentId, tableNumber });
   });
 
   app.use("/auth", authRouter);

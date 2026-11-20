@@ -81,7 +81,8 @@ export function LandingPage() {
             </div>
           </div>
           <p className="mic-hint">
-            Enter your table and language, then use the round button to start speaking.
+            Choose a language, tap Continue, then use the round button to speak. You can
+            change language anytime with Apply.
           </p>
         </section>
       </main>
